@@ -30,6 +30,7 @@ export function registerOnboarding() {
 		const missingConfig = (
 			{
 				cloud: `${selectedService.name} API key`,
+				streaming: `${selectedService.name} API key`,
 				'self-hosted': `${selectedService.name} server URL`,
 				local: `${selectedService.name} model file`,
 			} as const
