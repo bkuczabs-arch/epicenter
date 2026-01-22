@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:elevenlabs.io)",
+      "WebSearch",
+      "Bash(npm run check:*)",
+      "Bash(bun run typecheck:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npx svelte-kit:*)",
+      "Bash(npx svelte-check:*)",
+      "Bash(unset:*)",
+      "Bash(~/.bun/bin/bun run:*)",
+      "Bash(~/.bun/bin/bunx svelte-kit sync:*)",
+      "Bash(~/.bun/bin/bunx svelte-check:*)",
+      "Bash(test:*)",
+      "Bash(~/.bun/bin/bun install:*)",
+      "Bash(PATH=\"$HOME/.bun/bin:$PATH\" ~/.bun/bin/bun install:*)",
+      "Bash(PATH=\"$HOME/.bun/bin:$PATH\" ~/.bun/bin/bun run:*)",
+      "Bash(PATH=\"$HOME/.bun/bin:$PATH:./node_modules/.bin\" ~/.bun/bin/bun run:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: add monorepo context to CLAUDE.md\n\nDocument that whispering is part of the epicenter monorepo and how to\nrun typecheck correctly when working on a standalone copy.\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx tsx:*)",
+      "Bash(git commit:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "svelte-llm",
+    "svelte"
+  ]
+}

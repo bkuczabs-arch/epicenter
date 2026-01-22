@@ -291,6 +291,19 @@
 				</Field.Description>
 			</Field.Field>
 			<ElevenLabsApiKeyInput />
+		{:else if settings.value['transcription.selectedTranscriptionService'] === 'ElevenLabs Realtime'}
+			<Alert.Root class="border-blue-500/20 bg-blue-500/5">
+				<InfoIcon class="size-4 text-blue-600 dark:text-blue-400" />
+				<Alert.Title class="text-blue-600 dark:text-blue-400">
+					Realtime Streaming Transcription
+				</Alert.Title>
+				<Alert.Description>
+					ElevenLabs Realtime uses the Scribe v2 API to transcribe your speech
+					as you speak, with ultra-low latency (~150ms). You'll see partial
+					transcripts appear in real-time during recording.
+				</Alert.Description>
+			</Alert.Root>
+			<ElevenLabsApiKeyInput />
 		{:else if settings.value['transcription.selectedTranscriptionService'] === 'speaches'}
 			<div class="space-y-4">
 				<Card.Root>

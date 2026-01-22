@@ -43,6 +43,7 @@ export const TRANSCRIPTION_SERVICE_IDS = [
 	'Groq',
 	'OpenAI',
 	'ElevenLabs',
+	'ElevenLabs Realtime',
 	'Deepgram',
 	'Mistral',
 	'speaches',
@@ -77,10 +78,16 @@ type LocalTranscriptionService = BaseTranscriptionService & {
 	modelPathField: keyof Settings;
 };
 
+type StreamingTranscriptionService = BaseTranscriptionService & {
+	location: 'streaming';
+	apiKeyField: keyof Settings;
+};
+
 type SatisfiedTranscriptionService =
 	| CloudTranscriptionService
 	| SelfHostedTranscriptionService
-	| LocalTranscriptionService;
+	| LocalTranscriptionService
+	| StreamingTranscriptionService;
 
 export const TRANSCRIPTION_SERVICES = [
 	// Local services first (truly offline)
@@ -158,6 +165,15 @@ export const TRANSCRIPTION_SERVICES = [
 		modelSettingKey: 'transcription.elevenlabs.model',
 		apiKeyField: 'apiKeys.elevenlabs',
 		location: 'cloud',
+	},
+	{
+		id: 'ElevenLabs Realtime',
+		name: 'ElevenLabs Realtime',
+		icon: elevenlabsIcon,
+		invertInDarkMode: true,
+		description: 'Ultra-low latency streaming transcription (~150ms)',
+		apiKeyField: 'apiKeys.elevenlabs',
+		location: 'streaming',
 	},
 	{
 		id: 'Deepgram',
@@ -280,6 +296,11 @@ export const TRANSCRIPTION_SERVICE_CAPABILITIES = {
 	ElevenLabs: {
 		supportsPrompt: true,
 		supportsTemperature: true,
+		supportsLanguage: true,
+	},
+	'ElevenLabs Realtime': {
+		supportsPrompt: false,
+		supportsTemperature: false,
 		supportsLanguage: true,
 	},
 	Deepgram: {

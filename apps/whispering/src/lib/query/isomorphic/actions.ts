@@ -4,6 +4,7 @@ import { defineMutation } from '$lib/query/client';
 import { WhisperingErr } from '$lib/result';
 import { DbServiceErr } from '$lib/services/isomorphic/db';
 import { settings } from '$lib/stores/settings.svelte';
+import { realtimeRecorder } from '$lib/stores/realtime-recorder.svelte';
 import { vadRecorder } from '$lib/stores/vad-recorder.svelte';
 import * as transformClipboardWindow from '$routes/transform-clipboard/transformClipboardWindow.tauri';
 import { rpc } from '..';
@@ -27,6 +28,18 @@ import { transformer } from './transformer';
 
 // Track manual recording start time for duration calculation
 let manualRecordingStartTime: number | null = null;
+
+/**
+ * Helper to check if realtime transcription is enabled.
+ * When ElevenLabs Realtime is selected, transcription happens during recording
+ * rather than after, providing ultra-low latency (~150ms) streaming transcription.
+ */
+function isRealtimeTranscriptionEnabled(): boolean {
+	return (
+		settings.value['transcription.selectedTranscriptionService'] ===
+		'ElevenLabs Realtime'
+	);
+}
 
 /**
  * Mutex flag to prevent concurrent recording operations.
@@ -78,7 +91,9 @@ const startManualRecording = defineMutation({
 				notify.success({
 					id: toastId,
 					title: '🎙️ Whispering is recording...',
-					description: 'Speak now and stop recording when done',
+					description: isRealtimeTranscriptionEnabled()
+						? 'Speak now - transcription appears in real-time'
+						: 'Speak now and stop recording when done',
 				});
 				break;
 			}
@@ -120,6 +135,30 @@ const startManualRecording = defineMutation({
 				}
 			}
 		}
+
+		// Start realtime transcription if ElevenLabs Realtime is selected
+		if (isRealtimeTranscriptionEnabled()) {
+			const { error: realtimeStartError } =
+				await realtimeRecorder.startRecording({
+					onCommittedTranscript: (segment) => {
+						console.info('Realtime transcript committed:', segment.text);
+					},
+				});
+
+			if (realtimeStartError) {
+				// Cancel the recording since realtime transcription failed
+				await recorder.cancelRecording({ toastId });
+				notify.error({
+					id: toastId,
+					title: '❌ Realtime transcription failed to start',
+					description:
+						'Could not connect to ElevenLabs Realtime API. Check your API key and internet connection.',
+					action: { type: 'more-details', error: realtimeStartError },
+				});
+				return Ok(undefined);
+			}
+		}
+
 		// Track start time for duration calculation
 		manualRecordingStartTime = Date.now();
 		console.info('Recording started');
@@ -137,6 +176,28 @@ const stopManualRecording = defineMutation({
 			return Ok(undefined);
 		}
 		isRecordingOperationBusy = true;
+
+		// Check if realtime transcription was active
+		const wasRealtimeActive =
+			isRealtimeTranscriptionEnabled() &&
+			realtimeRecorder.state === 'RECORDING';
+
+		// Stop realtime transcription first to get the final transcript
+		let realtimeTranscript: string | undefined;
+		if (wasRealtimeActive) {
+			const { data: realtimeResult, error: realtimeStopError } =
+				await realtimeRecorder.stopRecording();
+
+			if (realtimeStopError) {
+				notify.warning({
+					title: '⚠️ Error stopping realtime transcription',
+					description: 'Will transcribe from recording instead.',
+					action: { type: 'more-details', error: realtimeStopError },
+				});
+			} else if (realtimeResult.fullTranscript.trim()) {
+				realtimeTranscript = realtimeResult.fullTranscript;
+			}
+		}
 
 		const toastId = nanoid();
 		notify.loading({
@@ -187,6 +248,8 @@ const stopManualRecording = defineMutation({
 			toastId,
 			completionTitle: '✨ Recording Complete!',
 			completionDescription: 'Recording saved and session closed successfully',
+			// Pass realtime transcript to skip batch transcription
+			realtimeTranscript,
 		});
 
 		return Ok(undefined);
@@ -358,6 +421,11 @@ export const commands = {
 				return Ok(undefined);
 			}
 			isRecordingOperationBusy = true;
+
+			// Cancel realtime transcription if active
+			if (realtimeRecorder.state === 'RECORDING') {
+				await realtimeRecorder.cancelRecording();
+			}
 
 			const toastId = nanoid();
 			notify.loading({
@@ -591,7 +659,7 @@ export const commands = {
  * 1. Creates recording metadata and saves to database
  * 2. Handles database save errors
  * 3. Shows completion toast
- * 4. Executes transcription flow
+ * 4. Executes transcription flow (skipped if realtimeTranscript provided)
  * 5. Applies transformation if one is selected
  *
  * @param recordingId - Optional recording ID. When provided (e.g., from CPAL recorder),
@@ -599,6 +667,10 @@ export const commands = {
  * When omitted (e.g., VAD recording, file uploads), a new ID is generated here using nanoid().
  * This flexibility allows different recording methods to control ID generation at the
  * appropriate point in their respective pipelines.
+ *
+ * @param realtimeTranscript - Optional transcript from realtime transcription (ElevenLabs Realtime).
+ * When provided, batch transcription is skipped since the transcript was already captured
+ * during recording with ultra-low latency.
  */
 async function processRecordingPipeline({
 	blob,
@@ -606,12 +678,14 @@ async function processRecordingPipeline({
 	toastId,
 	completionTitle,
 	completionDescription,
+	realtimeTranscript,
 }: {
 	blob: Blob;
 	recordingId?: string;
 	toastId: string;
 	completionTitle: string;
 	completionDescription: string;
+	realtimeTranscript?: string;
 }) {
 	const now = new Date().toISOString();
 	const newRecordingId = recordingId ?? nanoid();
@@ -649,28 +723,60 @@ async function processRecordingPipeline({
 		description: completionDescription,
 	});
 
+	// Use realtime transcript if available, otherwise transcribe the recording
+	let transcribedText: string;
 	const transcribeToastId = nanoid();
-	notify.loading({
-		id: transcribeToastId,
-		title: '📋 Transcribing...',
-		description: 'Your recording is being transcribed...',
-	});
 
-	const { data: transcribedText, error: transcribeError } =
-		await transcription.transcribeRecording(recording);
+	if (realtimeTranscript) {
+		// Realtime transcription already captured the text during recording
+		transcribedText = realtimeTranscript;
 
-	if (transcribeError) {
-		if (transcribeError.name === 'WhisperingError') {
-			notify.error({ id: transcribeToastId, ...transcribeError });
+		// Update the recording with the realtime transcript
+		const { error: updateError } = await db.recordings.update({
+			...recording,
+			transcribedText: realtimeTranscript,
+			transcriptionStatus: 'DONE',
+		});
+
+		if (updateError) {
+			notify.warning({
+				title: '⚠️ Unable to save transcript',
+				description:
+					'Transcription completed but could not be saved to database',
+				action: { type: 'more-details', error: updateError },
+			});
+		}
+
+		notify.success({
+			id: transcribeToastId,
+			title: '✨ Realtime transcription complete',
+			description: 'Your speech was transcribed in real-time',
+		});
+	} else {
+		notify.loading({
+			id: transcribeToastId,
+			title: '📋 Transcribing...',
+			description: 'Your recording is being transcribed...',
+		});
+
+		const { data: batchTranscribedText, error: transcribeError } =
+			await transcription.transcribeRecording(recording);
+
+		if (transcribeError) {
+			if (transcribeError.name === 'WhisperingError') {
+				notify.error({ id: transcribeToastId, ...transcribeError });
+				return;
+			}
+			notify.error({
+				id: transcribeToastId,
+				title: '❌ Failed to transcribe recording',
+				description: 'Your recording could not be transcribed.',
+				action: { type: 'more-details', error: transcribeError },
+			});
 			return;
 		}
-		notify.error({
-			id: transcribeToastId,
-			title: '❌ Failed to transcribe recording',
-			description: 'Your recording could not be transcribed.',
-			action: { type: 'more-details', error: transcribeError },
-		});
-		return;
+
+		transcribedText = batchTranscribedText;
 	}
 
 	sound.playSoundIfEnabled('transcriptionComplete');

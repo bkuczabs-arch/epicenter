@@ -222,6 +222,14 @@ async function transcribeBlob(
 							modelName: settings.value['transcription.elevenlabs.model'],
 						},
 					);
+				case 'ElevenLabs Realtime':
+					// ElevenLabs Realtime should transcribe during recording, not after.
+					// If we reach this point, realtime transcription failed.
+					return WhisperingErr({
+						title: '❌ Realtime transcription failed',
+						description:
+							'ElevenLabs Realtime transcription did not capture any text during recording. Check your API key and internet connection.',
+					});
 				case 'Deepgram':
 					return await services.transcriptions.deepgram.transcribe(
 						audioToTranscribe,

@@ -16,6 +16,7 @@
 	} from '$lib/constants/audio';
 	import { getShortcutDisplayLabel } from '$lib/constants/keyboard';
 	import { rpc } from '$lib/query';
+	import { realtimeRecorder } from '$lib/stores/realtime-recorder.svelte';
 	import { vadRecorder } from '$lib/stores/vad-recorder.svelte';
 	import { desktopServices, services } from '$lib/services';
 	import { settings } from '$lib/stores/settings.svelte';
@@ -33,6 +34,15 @@
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { UnlistenFn } from '@tauri-apps/api/event';
 	import { onDestroy, onMount } from 'svelte';
+
+	/**
+	 * Whether realtime transcription is currently active.
+	 * Used to show partial transcripts during recording.
+	 */
+	const isRealtimeActive = $derived(
+		settings.value['transcription.selectedTranscriptionService'] ===
+			'ElevenLabs Realtime' && realtimeRecorder.state === 'RECORDING',
+	);
 
 	const getRecorderStateQuery = createQuery(
 		() => rpc.recorder.getRecorderState.options,
@@ -239,6 +249,21 @@
 				</div>
 			{/if}
 		</div>
+
+		<!-- Realtime transcript display during recording -->
+		{#if isRealtimeActive}
+			<div class="w-full max-w-sm">
+				<div
+					class="bg-muted/50 border rounded-lg p-3 min-h-[60px] text-sm text-foreground/80"
+				>
+					{#if realtimeRecorder.fullTranscript}
+						<span class="text-foreground">{realtimeRecorder.fullTranscript}</span>
+					{:else}
+						<span class="text-muted-foreground italic">Listening...</span>
+					{/if}
+				</div>
+			</div>
+		{/if}
 	{:else if settings.value['recording.mode'] === 'vad'}
 		<!-- Container with relative positioning for the button and absolute selectors -->
 		<div class="relative">

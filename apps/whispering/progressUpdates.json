@@ -1,0 +1,13 @@
+{
+  "task": "Error handling audit of commit dafe348 (ElevenLabs Realtime transcription)",
+  "status": "in_progress",
+  "files_reviewed": [
+    "src/lib/services/isomorphic/audio/pcm-processor.ts",
+    "src/lib/services/isomorphic/transcription/realtime/elevenlabs-realtime.ts",
+    "src/lib/stores/realtime-recorder.svelte.ts",
+    "src/lib/query/isomorphic/actions.ts",
+    "src/lib/query/isomorphic/transcription.ts"
+  ],
+  "issues_found": [],
+  "last_updated": "2026-01-20"
+}
