@@ -42,6 +42,10 @@
 		TRANSCRIPTION_SERVICES.filter((service) => service.location === 'cloud'),
 	);
 
+	const streamingServices = $derived(
+		TRANSCRIPTION_SERVICES.filter((service) => service.location === 'streaming'),
+	);
+
 	const selfHostedServices = $derived(
 		TRANSCRIPTION_SERVICES.filter((service) => service.location === 'self-hosted'),
 	);
@@ -50,6 +54,7 @@
 	const items = $derived([
 		...localServices.map((s) => ({ ...s, group: 'Local' })),
 		...cloudServices.map((s) => ({ ...s, group: 'Cloud' })),
+		...streamingServices.map((s) => ({ ...s, group: 'Realtime' })),
 		...selfHostedServices.map((s) => ({ ...s, group: 'Self-Hosted' })),
 	]);
 </script>
@@ -144,8 +149,37 @@
 				</Select.Group>
 			{/if}
 
-			{#if selfHostedServices.length > 0}
+			{#if streamingServices.length > 0}
 				{#if localServices.length > 0 || cloudServices.length > 0}
+					<Select.Separator />
+				{/if}
+				<Select.Group>
+					<Select.GroupHeading>Realtime (Streaming)</Select.GroupHeading>
+					{#each streamingServices as service}
+						<Select.Item value={service.id} label={service.name}>
+							<div class="flex items-start gap-3 py-1">
+								<div class="mt-0.5">
+									{@render renderServiceIcon(service)}
+								</div>
+								<div class="flex-1 min-w-0">
+									<div class="flex items-center gap-2">
+										<span class="font-medium">{service.name}</span>
+										<Badge variant="default" class="text-xs">Realtime</Badge>
+									</div>
+									{#if service.description}
+										<div class="text-xs text-muted-foreground mt-1">
+											{service.description}
+										</div>
+									{/if}
+								</div>
+							</div>
+						</Select.Item>
+					{/each}
+				</Select.Group>
+			{/if}
+
+			{#if selfHostedServices.length > 0}
+				{#if localServices.length > 0 || cloudServices.length > 0 || streamingServices.length > 0}
 					<Select.Separator />
 				{/if}
 				<Select.Group>

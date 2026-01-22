@@ -33,6 +33,10 @@ export function isTranscriptionServiceConfigured(
 			const apiKey = settings.value[service.apiKeyField];
 			return apiKey !== '';
 		}
+		case 'streaming': {
+			const apiKey = settings.value[service.apiKeyField];
+			return apiKey !== '';
+		}
 		case 'self-hosted': {
 			const url = settings.value[service.serverUrlField];
 			return url !== '';
@@ -40,9 +44,6 @@ export function isTranscriptionServiceConfigured(
 		case 'local': {
 			const modelPath = settings.value[service.modelPathField];
 			return modelPath !== '';
-		}
-		default: {
-			return true;
 		}
 	}
 }

@@ -40,6 +40,10 @@
 		TRANSCRIPTION_SERVICES.filter((service) => service.location === 'cloud'),
 	);
 
+	const streamingServices = $derived(
+		TRANSCRIPTION_SERVICES.filter((service) => service.location === 'streaming'),
+	);
+
 	const selfHostedServices = $derived(
 		TRANSCRIPTION_SERVICES.filter(
 			(service) => service.location === 'self-hosted',
@@ -245,6 +249,48 @@
 								</Command.Item>
 							{/each}
 						{/if}
+					{/each}
+				</Command.Group>
+
+				<!-- Streaming Services (Realtime) -->
+				<Command.Group heading="Realtime">
+					{#each streamingServices as service (service.id)}
+						{@const isSelected =
+							settings.value['transcription.selectedTranscriptionService'] ===
+							service.id}
+						{@const isConfigured = isTranscriptionServiceConfigured(service)}
+
+						<Command.Item
+							value={`${service.id} ${service.name} realtime streaming live`}
+							onSelect={() => {
+								settings.updateKey(
+									'transcription.selectedTranscriptionService',
+									service.id,
+								);
+								combobox.closeAndFocusTrigger();
+							}}
+							class="flex items-center gap-2 px-2 py-2"
+						>
+							<CheckIcon
+								class={cn('size-3.5 shrink-0', {
+									'text-transparent': !isSelected,
+								})}
+							/>
+							{@render renderServiceIcon(service)}
+							<div class="flex-1 min-w-0">
+								<div class="flex items-center gap-2">
+									<span class="font-medium text-sm">{service.name}</span>
+									{#if !isConfigured}
+										<span class="text-xs text-warning">API key required</span>
+									{/if}
+								</div>
+								{#if service.description}
+									<div class="text-xs text-muted-foreground">
+										{service.description}
+									</div>
+								{/if}
+							</div>
+						</Command.Item>
 					{/each}
 				</Command.Group>
 

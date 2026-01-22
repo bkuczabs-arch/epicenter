@@ -47,7 +47,6 @@
 		"@aptabase/web": "^0.4.3",
 		"@tauri-apps/plugin-autostart": "^2.0.1",
 		"@epicenter/constants": "workspace:*",
-		"@epicenter/hq": "workspace:*",
 		"@epicenter/shared": "workspace:*",
 		"@epicenter/svelte-utils": "workspace:*",
 		"@google/generative-ai": "^0.24.1",
